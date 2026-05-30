@@ -37,7 +37,7 @@ Free Claude Code routes Anthropic Messages API traffic from Claude Code to any p
 ## What You Get
 
 - Drop-in proxy for Claude Code's Anthropic API calls.
-- Seventeen provider backends: NVIDIA NIM, OpenRouter, Google AI Studio (Gemini), DeepSeek, Mistral La Plateforme, Mistral Codestral, OpenCode Zen, OpenCode Go, Wafer, Kimi, Cerebras Inference, Groq, Fireworks AI, Z.ai, LM Studio, llama.cpp, and Ollama.
+- Eighteen provider backends: NVIDIA NIM, OpenRouter, Google AI Studio (Gemini), DeepSeek, Mistral La Plateforme, Mistral Codestral, OpenCode Zen, OpenCode Go, Wafer, Kimi, Cerebras Inference, Groq, Fireworks AI, Z.ai, Azure OpenAI, LM Studio, llama.cpp, and Ollama.
 - Per-model routing: send Opus, Sonnet, Haiku, and fallback traffic to different providers.
 - Native Claude Code `/model` picker support through the proxy's `/v1/models` endpoint (Claude Code must opt in to Gateway model discovery; see [Model Picker](#model-picker)).
 - Streaming, tool use, reasoning/thinking block handling, and local request optimizations.
@@ -274,13 +274,51 @@ Popular examples:
 
 Browse models at [Z.ai](https://z.ai).
 
-### 15. [LM Studio](https://lmstudio.ai/)
+### 15. [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/)
+
+Azure OpenAI lets you run OpenAI models on your own Azure subscription with enterprise security, private networking, and regional data residency.
+
+**Authentication** — two modes:
+
+1. **API key**: set `AZURE_OPENAI_API_KEY` in the Admin UI.
+2. **Azure Default Credentials** (recommended): leave `AZURE_OPENAI_API_KEY` blank. The provider uses [`DefaultAzureCredential`](https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.aio.defaultazurecredential) from the `azure-identity` package, which chains Managed Identity, Azure CLI, environment variables, and other credential sources automatically. Install the extra with:
+
+   ```bash
+   uv sync --extra azure
+   ```
+
+**Required settings** (Admin UI → Providers):
+
+| Field | Example | Description |
+|---|---|---|
+| `AZURE_OPENAI_ENDPOINT` | `https://myresource.openai.azure.com` | Your Azure OpenAI resource endpoint |
+| `AZURE_OPENAI_DEPLOYMENT` | `gpt-4o` | Deployment name in Azure |
+| `AZURE_OPENAI_API_VERSION` | `2025-04-01-preview` | API version (default shown) |
+| `AZURE_OPENAI_SCOPE` | `https://cognitiveservices.azure.com/.default` | OAuth scope for token auth (default shown) |
+
+Set `MODEL` to a deployment-prefixed slug such as `azure_openai/gpt-4o`.
+
+Popular examples:
+
+- `azure_openai/gpt-4o`
+- `azure_openai/gpt-4.1-mini`
+- `azure_openai/o4-mini`
+
+**Azure OpenAI + VS Code Claude Code extension (important)**
+
+The VS Code Claude Code extension embeds `role: "system"` messages inside the messages array instead of using the Anthropic top-level `system` parameter. The proxy automatically hoists these inline system messages to position 0, which is the only location Azure OpenAI accepts. No extra configuration is needed for this.
+
+If you use this proxy from the VS Code Claude Code extension and see repeated `401 Unauthorized` on `POST /v1/messages` while `GET /v1/models` succeeds, clear the proxy auth token in the Admin UI (**Runtime** → **API/CLI Auth Token**).
+
+For local-only setups, the recommended approach is to leave `ANTHROPIC_AUTH_TOKEN` blank on the proxy side and keep authentication at the upstream provider (Azure OpenAI). This avoids conflicts with extension-managed/stored Anthropic credentials.
+
+### 16. [LM Studio](https://lmstudio.ai/)
 
 Start LM Studio's local server and load a model. In the Admin UI, keep or update `LM_STUDIO_BASE_URL`, then set `MODEL` to the model identifier shown by LM Studio, prefixed with `lmstudio/`.
 
 Prefer models with tool-use support for Claude Code workflows.
 
-### 16. [llama.cpp](https://github.com/ggml-org/llama.cpp)
+### 17. [llama.cpp](https://github.com/ggml-org/llama.cpp)
 
 Start `llama-server` with an Anthropic-compatible `/v1/messages` endpoint and enough context for Claude Code requests.
 
@@ -288,7 +326,7 @@ In the Admin UI, keep or update `LLAMACPP_BASE_URL`, then set `MODEL` to the loc
 
 For local coding models, context size matters. If llama.cpp returns HTTP 400 for normal Claude Code requests, increase `--ctx-size` and verify the model/server build supports the requested features.
 
-### 17. [Ollama](https://ollama.com/)
+### 18. [Ollama](https://ollama.com/)
 
 Run Ollama and pull a model:
 
@@ -301,7 +339,7 @@ In the Admin UI, keep or update `OLLAMA_BASE_URL`, then set `MODEL` to the same 
 
 `OLLAMA_BASE_URL` is the Ollama server root; do not append `/v1`. Example model slugs include `ollama/llama3.1` and `ollama/llama3.1:8b`.
 
-### 18. Mix Providers By Model Tier
+### 19. Mix Providers By Model Tier
 
 Each model tier can use a different provider by setting `MODEL_OPUS`, `MODEL_SONNET`, and `MODEL_HAIKU` in the Admin UI. Leave a tier blank to inherit `MODEL`.
 
@@ -326,13 +364,16 @@ Open Settings, search for `claude-code.environmentVariables`, choose **Edit in s
 ```json
 "claudeCode.environmentVariables": [
   { "name": "ANTHROPIC_BASE_URL", "value": "http://localhost:8082" },
-  { "name": "ANTHROPIC_AUTH_TOKEN", "value": "freecc" },
   { "name": "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY", "value": "1" },
   { "name": "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "value": "190000" }
 ]
 ```
 
-Reload the extension. If the extension shows a login screen, choose the Anthropic Console path once; the local proxy still handles model traffic after the environment variables are active.
+This setup assumes proxy-side auth is disabled (`ANTHROPIC_AUTH_TOKEN` blank in Admin UI Runtime settings), which is the recommended path for local VS Code extension usage.
+
+If you require proxy-side auth, ensure the token sent by Claude Code exactly matches `ANTHROPIC_AUTH_TOKEN`; otherwise `/v1/messages` will return 401.
+
+Reload the extension (`Ctrl+Shift+P` → **Developer: Reload Window**). If the extension shows a login screen, choose the Anthropic Console path once; the local proxy still handles model traffic after the environment variables are active.
 
 ### 3. JetBrains ACP
 
@@ -453,7 +494,7 @@ Important pieces:
 
 - FastAPI exposes Anthropic-compatible routes such as `/v1/messages`, `/v1/messages/count_tokens`, and `/v1/models`.
 - Model routing resolves the Claude model name to `MODEL_OPUS`, `MODEL_SONNET`, `MODEL_HAIKU`, or `MODEL`.
-- NIM, OpenCode Zen, and OpenCode Go use OpenAI chat streaming translated into Anthropic SSE.
+- NIM, OpenCode Zen, OpenCode Go, and Azure OpenAI use OpenAI chat streaming translated into Anthropic SSE.
 - Wafer, OpenRouter, DeepSeek, Kimi, Fireworks AI, Z.ai, LM Studio, llama.cpp, and Ollama use Anthropic Messages style transports where applicable (with provider-specific quirks and model-list URLs).
 - The proxy normalizes thinking blocks, tool calls, token usage metadata, and provider errors into the shape Claude Code expects.
 - Request optimizations answer trivial Claude Code probes locally to save latency and quota.

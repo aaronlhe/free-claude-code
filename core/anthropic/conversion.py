@@ -563,11 +563,32 @@ def build_base_request_body(
         reasoning_replay=reasoning_replay,
     )
 
+    # Extract any inline system messages that were passed inside the messages array
+    # (e.g. from clients that embed role="system" in the messages list instead of
+    # using the top-level ``system`` parameter).  OpenAI-compatible APIs only allow
+    # a system message at position 0, so we hoist them all to the front and merge
+    # them with the top-level ``system`` parameter if one is also present.
+    inline_system_texts: list[str] = []
+    non_system_messages: list[dict[str, Any]] = []
+    for m in messages:
+        if m.get("role") == "system":
+            content = m.get("content") or ""
+            if content:
+                inline_system_texts.append(content)
+        else:
+            non_system_messages.append(m)
+    messages = non_system_messages
+
     system = getattr(request_data, "system", None)
-    if system:
-        system_msg = AnthropicToOpenAIConverter.convert_system_prompt(system)
-        if system_msg:
-            messages.insert(0, system_msg)
+    system_msg = AnthropicToOpenAIConverter.convert_system_prompt(system) if system else None
+    if system_msg:
+        system_content = system_msg.get("content") or ""
+        all_system_parts = ([system_content] if system_content else []) + inline_system_texts
+        merged_content = "\n\n".join(all_system_parts).strip()
+        if merged_content:
+            messages.insert(0, {"role": "system", "content": merged_content})
+    elif inline_system_texts:
+        messages.insert(0, {"role": "system", "content": "\n\n".join(inline_system_texts).strip()})
 
     body: dict[str, Any] = {"model": request_data.model, "messages": messages}
 

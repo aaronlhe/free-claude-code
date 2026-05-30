@@ -19,6 +19,7 @@ _EXPECTED_PROVIDER_ORDER: tuple[str, ...] = (
     "groq",
     "fireworks",
     "zai",
+    "azure_openai",
     "lmstudio",
     "llamacpp",
     "ollama",

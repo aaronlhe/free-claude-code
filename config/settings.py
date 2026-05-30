@@ -144,6 +144,25 @@ class Settings(BaseSettings):
     # ==================== Cerebras Inference (OpenAI-compatible) ====================
     cerebras_api_key: str = Field(default="", validation_alias="CEREBRAS_API_KEY")
 
+    # ==================== Azure OpenAI ====================
+    azure_openai_api_key: str = Field(
+        default="", validation_alias="AZURE_OPENAI_API_KEY"
+    )
+    azure_openai_endpoint: str = Field(
+        default="", validation_alias="AZURE_OPENAI_ENDPOINT"
+    )
+    azure_openai_deployment: str = Field(
+        default="", validation_alias="AZURE_OPENAI_DEPLOYMENT"
+    )
+    azure_openai_api_version: str = Field(
+        default="2025-04-01-preview",
+        validation_alias="AZURE_OPENAI_API_VERSION",
+    )
+    azure_openai_scope: str = Field(
+        default="https://cognitiveservices.azure.com/.default",
+        validation_alias="AZURE_OPENAI_SCOPE",
+    )
+
     # ==================== Messaging Platform Selection ====================
     # Valid: "telegram" | "discord" | "none"
     messaging_platform: str = Field(
@@ -204,6 +223,7 @@ class Settings(BaseSettings):
     gemini_proxy: str = Field(default="", validation_alias="GEMINI_PROXY")
     groq_proxy: str = Field(default="", validation_alias="GROQ_PROXY")
     cerebras_proxy: str = Field(default="", validation_alias="CEREBRAS_PROXY")
+    azure_openai_proxy: str = Field(default="", validation_alias="AZURE_OPENAI_PROXY")
 
     # ==================== Provider Rate Limiting ====================
     provider_rate_limit: int = Field(default=40, validation_alias="PROVIDER_RATE_LIMIT")

@@ -136,6 +136,30 @@ def _create_cerebras(config: ProviderConfig, _settings: Settings) -> BaseProvide
     return CerebrasProvider(config)
 
 
+def _create_azure_openai(config: ProviderConfig, settings: Settings) -> BaseProvider:
+    from providers.azure_openai import AzureOpenAIProvider
+    from providers.exceptions import AuthenticationError as ProviderAuthError
+
+    if not settings.azure_openai_endpoint:
+        raise ProviderAuthError(
+            "AZURE_OPENAI_ENDPOINT is not set. "
+            "Add it to your .env file (e.g. https://myresource.openai.azure.com)."
+        )
+    if not settings.azure_openai_deployment:
+        raise ProviderAuthError(
+            "AZURE_OPENAI_DEPLOYMENT is not set. "
+            "Add it to your .env file (e.g. gpt-4o)."
+        )
+    return AzureOpenAIProvider(
+        config,
+        azure_endpoint=settings.azure_openai_endpoint,
+        azure_deployment=settings.azure_openai_deployment,
+        azure_api_version=settings.azure_openai_api_version,
+        azure_scope=settings.azure_openai_scope,
+        azure_api_key=settings.azure_openai_api_key,
+    )
+
+
 PROVIDER_FACTORIES: dict[str, ProviderFactory] = {
     "nvidia_nim": _create_nvidia_nim,
     "open_router": _create_open_router,
@@ -154,6 +178,7 @@ PROVIDER_FACTORIES: dict[str, ProviderFactory] = {
     "lmstudio": _create_lmstudio,
     "llamacpp": _create_llamacpp,
     "ollama": _create_ollama,
+    "azure_openai": _create_azure_openai,
 }
 
 if set(PROVIDER_DESCRIPTORS) != set(SUPPORTED_PROVIDER_IDS) or set(
